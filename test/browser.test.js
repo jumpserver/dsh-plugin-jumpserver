@@ -217,7 +217,7 @@ test('a loaded or superseded update does not prevent automatic checks for the ne
     const view = header(async () => updateState({ installedVersion }));
     await flush();
     assert.deepEqual(view.actions, ['update-status', 'check-update']);
-    assert.equal(view.button().children[0], 'installUpdate');
+    assert.equal(view.button().children[0], 'installUpdate v99.0.0');
     assert.equal(view.timers.size, 0);
     view.unmount();
   }
