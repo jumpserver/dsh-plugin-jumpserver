@@ -4,7 +4,7 @@
   "description": "Connect JumpServer assets to DeepSeek Harness: browser authorization, commands, file transfers, and terminal handoff.",
   "homepage": "https://github.com/jumpserver/dsh-plugin-jumpserver",
   "repository": { "type": "git", "url": "git+https://github.com/jumpserver/dsh-plugin-jumpserver.git" },
-  "bugs": { "url": "https://github.com/jumpserver/dsh-plugin-jumpserver/issues" },
+  "bugs": { "url": "https://github.com/jumpserver/jumpserver/issues" },
   "keywords": ["deepseek-harness", "dsh", "jumpserver", "mcp", "ssh"],
   "type": "module",
   "main": "lib/index.js",
