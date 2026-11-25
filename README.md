@@ -1,0 +1,135 @@
+# JumpServer for DeepSeek Harness
+
+在 DeepSeek Harness 中连接 JumpServer，通过浏览器授权，让 Agent 使用你有权限的资产，执行命令、传输文件，并在需要时由你接管终端。
+
+[使用说明](docs/usage.md) · [GitHub](https://github.com/jumpserver/dsh-plugin-jumpserver) · [反馈问题](https://github.com/jumpserver/dsh-plugin-jumpserver/issues)
+
+通过 JumpServer / KoKo 提供的 MCP 接口连接资产。参考 [dsh-mcp-manager](https://github.com/hyqhyq3/dsh-mcp-manager) 的插件结构和 OAuth 集成方式，MCP 传输使用官方 TypeScript SDK。
+
+## 安装
+
+要求 Node.js `>=24.9`，支持 DSH `0.2.2-rc.5` 及 `0.2.3-alpha.2`，并保留 `0.2.2-rc.1` 起的兼容范围。使用 DSH `0.2.3-alpha.2` 时，Node.js 须符合宿主要求：`^24.22.3 || >=26.13.1`。
+
+在仓库目录执行：
+
+```bash
+npm install
+npm run pack
+```
+
+在 DSH 桌面版的插件安装入口选择本地包 `dsh-plugin-jumpserver-0.1.4.tgz`，或将其完整路径作为安装源。Web 版可使用：
+
+```bash
+dsh plugin --profile web add /完整路径/dsh-plugin-jumpserver-0.1.4.tgz
+```
+
+也可在 DSH 的插件安装入口填写 [正式 Release 安装包](https://github.com/jumpserver/dsh-plugin-jumpserver/releases/latest) 的 `.tgz` 下载地址。不要使用 `github.com:jumpserver/dsh-plugin-jumpserver.git`，该格式不是合法的依赖协议；若 profile 已保存此错误依赖，先在插件管理中纠正安装源。
+
+安装后重启对应 DSH profile，点击左侧导航中的 **JumpServer** 打开独立页面。包中的 `cordis.patch.yml` 自动启用插件。
+
+### 更新插件
+
+标题旁显示当前插件版本和短提交号。进入页面时检查本仓库 GitHub Release 的最新正式版本，发现更高版本后直接点击“更新”；没有更新时可手动再次检查。检查和更新的进度独立显示，检查不会阻塞授权或连接操作。插件下载发布包并核对同一 Release 的 `SHA256SUMS`，再交给当前 profile 的 DSH 原生插件管理器安装；不会从 npm 下载同名插件。安装后按提示重新加载页面或重启 DSH，更新后沿用原连接配置、`client_id` 和 OAuth Token。
+
+启用 HMR 的 profile 会先保存当前插件的本地恢复快照，再交给 DSH 停止旧插件并安装新版。更新任务会跨插件重载保留，新页面可接续显示结果。安装失败会恢复旧版；恢复失败时显示可用于原生安装的 `file:` 恢复源，并写入 DSH 日志及 `jumpserver-updates/last-update-error.json`，便于插件无法加载时恢复。“插件管理”入口优先打开 DSH 中的 JumpServer 插件详情，不支持该导航时打开正式 Release 页面。此过程保留连接配置及 OAuth 凭据。
+
+更新不会自动发布或安装预发布版本，也不会降级。没有启用 DSH 原生插件管理的 profile 应从原插件安装入口更新。校验后的安装包及恢复快照保存在状态文件旁的 `jumpserver-updates` 目录，供 profile 的本地包依赖继续使用，不应在该 profile 仍引用它们时删除。开发代码须发布新版本后才能被其他客户端检查到；同一版本重建不会被视为新版本。
+
+## 一句话接入
+
+在 JumpServer 的 **个人设置 > Agent / MCP > 接入文档** 中点击“复制给 Agent”，将说明发送给正在使用的 DSH。Agent 读取本站公开的简短指南，识别当前 profile，复用或安装插件，并引导用户在浏览器登录、确认授权。
+
+当前安装包提供 `jumpserver-mcp` 配置命令。在运行 DSH 的机器上执行：
+
+```bash
+jumpserver-mcp setup --url 'https://jumpserver.example.com/koko/mcp'
+```
+
+若命令不在 PATH 中，使用 `node` 运行已安装插件的 `lib/cli.js`，参数相同；不要通过 npm/npx 下载同名包。插件分发仍使用官方 GitHub Release 的 `.tgz` 和 `SHA256SUMS`。旧安装包若不含 `lib/cli.js`，须先更新插件。
+
+命令复用宿主的 `$DSH_HOME/jumpserver.json`（未设置时为 `~/.dsh/jumpserver.json`），保持单连接、固定名称及原 `client_id`。插件有自定义 `statePath` 时，必须用 `--state-path` 指向同一文件。已有授权可直接使用或按现有逻辑刷新；需要登录时输出授权链接并尝试打开本机系统浏览器，等待现有 PKCE 回调，不打印 Token。SSH、无桌面环境或传入 `--no-browser` 时保留手动打开链接。目标地址冲突、连接已停用、DCR 关闭且没有可复用客户端、额度不足等错误均停止，不覆盖配置或循环注册。
+
+命令仅验证 MCP 连接与工具发现，不连接资产或执行工具。完成后重新加载对应 DSH profile，或在 JumpServer 页面点击“重新连接”，使宿主加载已保存的连接；当前对话不一定能立即获得新工具。远程机器的回环回调仍需本地端口转发，用户在自己浏览器完成登录、授权和 MFA；不能改用远程域名回调规避限制。配置指南只在接入时读取，不加入每轮对话，也不新增 MCP 工具。
+
+## 使用
+
+1. 配置 JumpServer：地址如 `https://jumpserver.example.com/koko/mcp`，填写后点击“保存配置”。只填写站点 origin 时自动补上 `/koko/mcp`；完整 MCP 地址末尾不能带 `/`。
+2. 点击“浏览器授权”，在 JumpServer 登录并确认授权。部分部署还会要求确认跳转到本机回调。
+3. 桌面版自动打开系统浏览器；Web 版在点击授权时先创建新页面，再跳转到授权地址。授权完成后自动连接并发现工具，JumpServer 页面显示状态、工具数量、Token 有效期和诊断日志。工具目录默认收起，展开后可按需查看各工具的说明及完整调用名。系统浏览器未启动或 Web 弹窗被拦截时，点击“打开授权页面”继续同一次授权。
+4. 在 DSH 会话中使用工具，名称为 `mcp__jumpserver__<原始工具名>`，例如 `mcp__jumpserver__search_assets`。
+5. 已授权时连接概览显示“撤销授权”，未授权或授权失效时显示“浏览器授权”。点击“连接设置”可修改地址、超时或清除配置。修改地址会清除本地 OAuth 凭据，需要重新授权。停用保留授权并卸载工具；撤销授权后保留连接配置，正常撤销可复用客户端注册；清除配置会先撤销服务端授权，再删除本地连接及其凭据。撤销失败时保留配置并提示重试。
+
+插件列表及独立页面固定显示 **JumpServer**，包名为 `dsh-plugin-jumpserver`，内部插件 ID 为 `jumpserver`。连接配置、授权、工具目录及诊断统一在独立页面管理，DSH 全局设置不再注册 JumpServer 入口。JumpServer OAuth 授权页中的客户端名称固定为 **DeepSeek Harness**，同一连接重复授权会复用已保存的 `client_id`。
+
+每份状态配置只保存一个 JumpServer 连接，界面不提供自定义实例名和多实例列表；宿主侧拒绝创建第二条配置，并在同一 DSH 运行上下文中限制插件重复加载。切换站点须修改地址并重新授权，授权范围以 JumpServer 权限为准。不同电脑或用户保持各自独立的授权。
+
+使用模型网关时，DSH 配置中的模型标识须与网关实际可用的模型目录一致。模型路由的 404 应通过 DSH 模型设置修正，避免把它当作 JumpServer 权限错误重试。
+
+## 桌面与 Web
+
+- 独立页面使用 DSH 原生导航插槽及 Remote 服务，支持桌面 IPC 和 Web 通道，不要求 Electron 的 `file://` 页面使用相对 HTTP 请求。
+- 桌面授权自动在 `127.0.0.1` 临时监听回调，完成或超时后释放。首次动态注册使用 public client、PKCE S256、`agent:access` 和精确 MCP resource，无需客户端密钥。
+- 本机 HTTP Web 优先使用 DSH Web 服务的回调路由。浏览器通过 `localhost` 访问时回调改用 `127.0.0.1`，符合当前 JumpServer 的 IP 回环要求。
+- 动态注册允许本机端口变化，插件持久化并复用 client ID。
+- 远程 Web 须通过本地端口转发以 `http://127.0.0.1:端口` 访问 DSH，让授权回调通过相同转发到达 DSH。直接注册远程域名回调不符合当前服务端规则。
+- HTTP、HTTPS MCP 地址均支持，适用于 HTTP 开发环境和 HTTPS 部署。
+
+## Token 与状态
+
+状态格式为 `version: 2`，使用单个 `connection` 对象；未配置时为 `null`。默认状态文件为 `$DSH_HOME/jumpserver.json`，未设置 `DSH_HOME` 时为 `~/.dsh/jumpserver.json`。OAuth Token 保存在宿主侧文件中，文件权限 `0600`；不返回前端页面，不进入代码、日志或 URL。插件配置可通过 `statePath` 指定其他状态文件。
+
+刷新在请求前根据 `expires_in` 提前触发。401 可触发一次刷新并重试被拒绝的请求；网络故障不会自动重放命令。进程内合并刷新请求，进程间通过文件锁串行刷新和状态写入，原子替换保存轮换后的 Token。`invalid_grant` 等永久错误停止刷新并提示重新授权。轮换成功但写盘失败时停止后续刷新，修复状态目录后重新授权。
+
+锁目录为状态文件旁的 `.lock`。仅回收已退出进程或长时间未完成的持有者；不会按存活进程的锁年龄抢占。异常遗留的 `.lock.reclaim` 需要检查后人工清理，避免并发抢占。
+
+连接配置默认属于本机 DSH 用户，工具在该 profile 的会话中全局可用。多个 DSH 进程使用相同 `DSH_HOME` 时共享凭据。第一版不提供项目级工具隔离。
+
+## 操作结果
+
+服务端当前提供资产搜索、连接/断开、命令执行、操作查询/取消、SFTP 文件操作、文件上传下载登记和人工终端交接。工具目录以实际 `tools/list` 为准，支持分页及工具变更通知。
+
+`execute_command` 等工具返回 `action_id` 后，仍须使用 `query_actions(operation=get)` 查询。HTTP 成功、MCP 调用成功、操作已接受均不代表资产执行成功。插件保留 `structuredContent`、审批/交接链接、事件游标和审计状态，并向模型提供服务端操作说明。
+
+运行查询不授予历史审计权限。`query_sessions(operation=list)` 仅列出有效会话，`query_actions(operation=list)` 必须提供 `session_id`。完成的结果及下载字节按服务端 `result_expires_at` 领取，期限为完成后 15 分钟。遇到 `result_expired` 应停止查询，不刷新授权或重新执行；历史证据由有权限的审计人员在 Lina 查看。插件沿用服务端工具约束和错误说明。
+
+- 每个新操作使用新的 `idempotency_key`，重试同一操作保持原参数和原键。
+- `unknown` 结果禁止自动重发，须先核对资产状态。
+- 审批、MFA、个人凭据和敏感输入通过返回的 JumpServer 页面完成。
+- SSH 命令之间不共享 Shell 状态，工作目录和环境变量使用 `cwd` / `env` 显式传入。
+- 文件通过 DSH 对话中的原生附件入口选择，或使用当前会话工作区内的文件。Agent 使用已有的 SFTP 会话调用 `file_write(operation=upload)`，传入插件侧的 `local_path`；插件将源文件保存为不可变附件，并自动计算大小和 SHA256。`local_path` 不发送到 JumpServer。每次最多 100 MiB，同时最多传输两个文件。
+- SFTP 的 `/` 是平台配置的虚拟根目录，可能与 SSH 的系统 `/` 不同。先确认该目录的可见路径；没有 SFTP 授权时须先调整授权，不能靠 SSH/base64 绕过文件策略。
+- 插件接续 `file_write(operation=upload)` / `file_read(operation=download)` 返回的原 `action_id` 传输文件字节。需要人工审批或凭据输入时，打开返回的 JumpServer 链接，完成后调用 `query_actions(operation=get)`，继续同一操作。插件不再另建或自动关闭 SFTP 会话；操作仍经过 Core 授权、审批及审计，OAuth Token 始终留在宿主侧。
+- 下载核对审计结果、响应头、实际长度和 SHA256 后写入 DSH 原生附件存储，工具结果包含文件附件及 `local_file.path`，可继续在会话中读取、处理或通过 DSH 文件链接交付；预览及浏览器下载遵循 DSH 原生文件服务的大小限制。文件字节不进入模型参数或上下文。小文本仍可使用 `file_read(operation=read)` / `file_write(operation=write)`。
+- `local_transfer.state` 表示客户端字节传输状态：`uploaded` 仅表示上传字节已提交，最终执行结果仍须查询原操作；`stored` 表示下载已校验并保存。`unknown` 禁止自动重传；`source_required` 表示当前会话缺少原上传源，须核对原操作并使用原幂等键和相同源文件恢复。原生工具结果保留附件及传输证据供会话恢复，不支持断点续传。
+
+## 开发
+
+```bash
+npm test
+npm run build
+```
+
+修改独立页面源码 `src/client.js` 后执行 `npm run build`，生成 DSH 加载的 `lib/client.js`。单元测试使用本机隔离的 OAuth/MCP 服务，不需要外部环境或真实凭据。
+
+发布安装包使用 `npm run pack`，输出到 `dist/`。包内 README 使用独立的使用说明，仓库 README 保留开发文档。构建时将 Git 提交号写入安装包，由宿主返回实际加载的提交号；存在未提交修改时标记为开发版。
+
+## 自动构建与 Release
+
+GitHub Actions 的 **Build and Release** 工作流在推送 `master` 或提交 Pull Request 时执行单元测试、构建和打包，安装包与 `SHA256SUMS` 保留在该次运行的 Artifacts 中。
+
+发布新版本时，先修改 `package.json` 的版本，并同步更新 lock 文件、提交代码，再推送同名版本标签：
+
+```bash
+npm version patch
+git push origin master --follow-tags
+```
+
+也可以在 GitHub **Actions → Build and Release → Run workflow** 手动发布：
+
+- `tag` 留空：使用所选分支的 `package.json` 版本创建 Release 和标签。
+- `tag` 填写已有标签（例如 `v0.1.0`）：检出该标签，重新测试、构建并更新对应 Release 的安装包和校验文件。
+- 已有运行可以使用 **Re-run all jobs** 重跑。只重跑发布 job 时复用尚未过期的构建产物。
+
+标签必须与 `package.json` 的版本一致。同一标签重跑会覆盖同名附件，并保留既有 Release 说明；不会移动已有标签。所选分支包含新代码时，应提升版本，或明确选择原标签重建。包含预发布版本号的标签（如 `v0.1.1-beta.1`）自动标记为 Pre-release。
+
+工作流只使用 GitHub 自动提供的 `GITHUB_TOKEN`，无需配置额外发布密钥。安装包通过 GitHub Release 分发，不会上传 npm registry。
