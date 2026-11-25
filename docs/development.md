@@ -25,7 +25,9 @@ dsh plugin --profile web add "$PWD/dist/dsh-plugin-jumpserver-${version}.tgz"
 
 ## 发布正式版本
 
-以下示例使用 `v0.1.5`。将 `version` 换成本次要发布的版本号。`upstream` 指向组织仓库 `jumpserver/dsh-plugin-jumpserver`。
+发布目标是 [JumpServer 官方插件仓库](https://github.com/jumpserver/dsh-plugin-jumpserver)。直接克隆该仓库时，Git 默认将远端命名为 `origin`。如果你的 `origin` 指向个人 fork，而 `upstream` 指向官方仓库，请将下方命令中的 `origin` 替换为 `upstream`。
+
+以下示例使用 `v0.1.5`。将 `version` 换成本次要发布的版本号。
 
 ### 1. 准备版本 PR
 
@@ -33,8 +35,8 @@ dsh plugin --profile web add "$PWD/dist/dsh-plugin-jumpserver-${version}.tgz"
 
 ```bash
 version=0.1.5
-git fetch upstream master
-git switch -c "pr@master@release-v${version}" upstream/master
+git fetch origin master
+git switch -c "pr@master@release-v${version}" origin/master
 npm version "$version" --no-git-tag-version
 npm ci
 npm test
@@ -50,11 +52,11 @@ npm run pack
 ```bash
 version=0.1.5
 release_commit='在这里粘贴合入 master 的完整提交号'
-git fetch upstream master
-git merge-base --is-ancestor "$release_commit" upstream/master &&
+git fetch origin master
+git merge-base --is-ancestor "$release_commit" origin/master &&
   test "$(git show "${release_commit}:package.json" | jq -r .version)" = "$version" &&
   git tag -a "v${version}" "$release_commit" -m "Release v${version}" &&
-  git push upstream "refs/tags/v${version}"
+  git push origin "refs/tags/v${version}"
 ```
 
 ### 3. 验证公开的安装包
