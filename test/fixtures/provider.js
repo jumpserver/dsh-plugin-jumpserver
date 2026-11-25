@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { createHash } from 'node:crypto';
 
-export async function provider({ files = false } = {}) {
+export async function provider({ files = false, tls } = {}) {
   const state = { registrations: 0, refreshes: 0, calls: 0, denyRefresh: false, access: 'access-0', refresh: 'refresh-0', grants: new Map(), dropCommand: false };
   let base;
   const tools = [
@@ -16,7 +17,8 @@ export async function provider({ files = false } = {}) {
     state.toolCalls = [];
   }
   const json = (res, code, value) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
-  const server = createServer(async (req, res) => {
+  const server = tls ? createHttpsServer(tls) : createServer();
+  server.on('request', async (req, res) => {
     const url = new URL(req.url, base);
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
@@ -80,7 +82,8 @@ export async function provider({ files = false } = {}) {
     if (url.pathname === '/revoke') { state.revoked = true; res.writeHead(200); res.end(); return; }
     if (url.pathname === '/koko/mcp') {
       if (req.headers.authorization !== `Bearer ${state.access}` || state.revoked) {
-        res.writeHead(401, { 'WWW-Authenticate': `Bearer resource_metadata="${base}/koko/mcp/.well-known/oauth-protected-resource", scope="agent:access"` }); res.end(); return;
+        const metadata = state.resourceMetadataUrl || `${base}/koko/mcp/.well-known/oauth-protected-resource`;
+        res.writeHead(401, { 'WWW-Authenticate': `Bearer resource_metadata="${metadata}", scope="agent:access"` }); res.end(); return;
       }
       if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
       const rpc = JSON.parse(text);
@@ -138,6 +141,6 @@ export async function provider({ files = false } = {}) {
     res.writeHead(404); res.end();
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  base = `http://127.0.0.1:${server.address().port}`;
+  base = `${tls ? 'https' : 'http'}://127.0.0.1:${server.address().port}`;
   return { base, state, tools, close: () => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }) };
 }
