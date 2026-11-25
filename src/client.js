@@ -6,10 +6,12 @@ import { authorizeInBrowser } from '../lib/client-authorization.js';
 
 const h = React.createElement;
 export const inject = ['remote'];
+const emptyConnection = { url: '', timeoutMs: '60000', skipTlsVerify: false };
 const zh = {
   title: 'JumpServer', intro: '在 DeepSeek Harness 中连接 JumpServer，通过浏览器授权，让 Agent 使用你有权限的资产，执行命令、传输文件，并在需要时由你接管终端。',
   connection: '连接概览', configuration: '连接设置', loading: '正在读取连接…',
   url: 'JumpServer / MCP 地址', timeout: '工具调用超时（毫秒）', save: '保存配置', cancel: '取消',
+  skipTlsVerify: '忽略此站点的 HTTPS 证书校验（自签名证书）',
   authorize: '浏览器授权', open: '打开授权页面', connect: '重新连接', edit: '编辑', disable: '停用', enable: '启用', logout: '撤销授权', remove: '清除配置',
   connected: '已连接', 'needs-auth': '待授权', authorizing: '等待浏览器授权', connecting: '连接中', disabled: '已停用', disconnected: '未连接', error: '连接失败',
   tools: '工具', toolsHint: '已接入对话，按需查看工具说明。', noTools: '连接后自动发现可用工具。', viewTools: '查看', collapseTools: '收起',
@@ -28,6 +30,7 @@ const en = {
   title: 'JumpServer', intro: 'Connect JumpServer to DeepSeek Harness. Authorize in your browser so your agent can use permitted assets, run commands, transfer files, and hand the terminal over to you when needed.',
   connection: 'Connection overview', configuration: 'Connection settings', loading: 'Loading connection…',
   url: 'JumpServer / MCP URL', timeout: 'Tool call timeout (ms)', save: 'Save configuration', cancel: 'Cancel',
+  skipTlsVerify: 'Skip HTTPS certificate verification for this site (self-signed certificate)',
   authorize: 'Authorize in browser', open: 'Open authorization page', connect: 'Reconnect', edit: 'Edit', disable: 'Disable', enable: 'Enable', logout: 'Revoke authorization', remove: 'Clear configuration',
   connected: 'Connected', 'needs-auth': 'Authorization required', authorizing: 'Waiting for browser', connecting: 'Connecting', disabled: 'Disabled', disconnected: 'Disconnected', error: 'Connection failed',
   tools: 'Tools', toolsHint: 'Available in conversations. Browse details when needed.', noTools: 'Tools are discovered after connecting.', viewTools: 'View', collapseTools: 'Collapse',
@@ -58,6 +61,7 @@ const css = `
 .jsm-error{color:var(--dsw-alias-state-error-primary);font-size:13px;overflow-wrap:anywhere}.jsm-url{font-size:13px;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary)}
 .jsm-form{display:flex;flex-direction:column;gap:16px}.jsm-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px);gap:16px}
 .jsm label{font-size:13px;display:flex;flex-direction:column;gap:8px}.jsm input{box-sizing:border-box;width:100%;font:inherit;padding:9px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1)}
+.jsm label.jsm-checkbox{flex-direction:row;align-items:center}.jsm-checkbox input{width:auto;padding:0}
 .jsm button{font:inherit;font-size:13px;padding:7px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);cursor:pointer}.jsm button:disabled{opacity:.5;cursor:default}.jsm button:focus-visible,.jsm input:focus-visible,.jsm summary:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}
 .jsm .jsm-primary{background:var(--dsw-alias-state-business-primary);color:white;border-color:transparent}.jsm .jsm-danger{color:var(--dsw-alias-state-error-primary)}
 .jsm-management{padding-top:16px;border-top:1px solid var(--dsw-alias-border-l2)}.jsm small{font-size:12px;color:var(--dsw-alias-label-tertiary)}
@@ -222,7 +226,7 @@ function JumpServerPage({ request, t, onManagePlugin }) {
   const [busy, setBusy] = React.useState(false);
   const [installingPlugin, setInstallingPlugin] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
-  const [values, setValues] = React.useState({ url: '', timeoutMs: '60000' });
+  const [values, setValues] = React.useState(emptyConnection);
   const [authorization, setAuthorization] = React.useState(null);
   const [logs, setLogs] = React.useState([]);
   const refresh = React.useCallback(async () => {
@@ -261,21 +265,28 @@ function JumpServerPage({ request, t, onManagePlugin }) {
     h('input', { type, required: true, disabled: busy || installingPlugin, value: values[key], 'aria-label': t(key === 'timeoutMs' ? 'timeout' : key),
       placeholder: key === 'url' ? 'https://jumpserver.example.com/koko/mcp' : undefined,
       min: type === 'number' ? 1000 : undefined, max: type === 'number' ? 600000 : undefined,
-      onChange: event => setValues(old => ({ ...old, [key]: event.target.value })) }));
+      onChange: event => {
+        const value = event.target.value;
+        setValues(old => ({ ...old, [key]: value, skipTlsVerify: key === 'url' ? false : old.skipTlsVerify }));
+      } }));
   const action = (label, handler, extra = {}) => h('button', { type: 'button', disabled: busy || installingPlugin || !loaded, onClick: handler, ...extra }, t(label));
   const configuration = h('section', { className: 'jsm-card', id: 'jumpserver-configuration', 'aria-labelledby': 'jumpserver-configuration-title' },
     h('h2', { id: 'jumpserver-configuration-title' }, t('configuration')),
     !connection && h('p', null, t('empty')),
     h('form', { className: 'jsm-form', onSubmit: event => { event.preventDefault(); run(async () => {
       await request({ ...(connection ? { action: 'update', id: connection.id } : { action: 'add' }), values });
-      setEditing(false); setValues({ url: '', timeoutMs: '60000' });
+      setEditing(false); setValues(emptyConnection);
     }); } }, h('div', { className: 'jsm-fields' }, field('url'), field('timeoutMs', 'number')),
+    h('label', { className: 'jsm-checkbox' }, h('input', { type: 'checkbox', checked: values.skipTlsVerify,
+      disabled: busy || installingPlugin || !/^https:\/\//i.test(values.url.trim()),
+      onChange: event => { const checked = event.target.checked; setValues(old => ({ ...old, skipTlsVerify: checked })); },
+    }), t('skipTlsVerify')),
     h('div', { className: 'jsm-actions' }, h('button', { className: 'jsm-primary', type: 'submit', disabled: busy || installingPlugin || !loaded }, t('save')),
       connection && action('cancel', () => setEditing(false)))),
     connection && h('div', { className: 'jsm-actions jsm-management' },
       action('remove', () => { if (window.confirm(t('deleteQuestion'))) run(async () => {
         await request({ action: 'remove', id: connection.id });
-        setEditing(false); setAuthorization(null); setLogs([]); setValues({ url: '', timeoutMs: '60000' });
+        setEditing(false); setAuthorization(null); setLogs([]); setValues(emptyConnection);
       }); }, { className: 'jsm-danger' })),
   );
   return h('div', { className: 'jsm-page', 'data-jumpserver-page': true }, h('main', { className: 'jsm', 'aria-label': DISPLAY_NAME },
@@ -292,7 +303,7 @@ function JumpServerPage({ request, t, onManagePlugin }) {
         connection.enabled && connection.authorized && action('connect', () => run(() => request({ action: 'connect', id: connection.id }))),
         action(connection.enabled ? 'disable' : 'enable', () => run(() => request({ action: 'update', id: connection.id, values: { enabled: !connection.enabled } }))),
         action('configuration', () => {
-          if (!editing) setValues({ url: connection.url, timeoutMs: String(connection.timeoutMs) });
+          if (!editing) setValues({ url: connection.url, timeoutMs: String(connection.timeoutMs), skipTlsVerify: connection.skipTlsVerify === true });
           setEditing(previous => !previous);
         }, { 'aria-expanded': editing, 'aria-controls': 'jumpserver-configuration' })),
       authorization && connection.status === 'authorizing' && h('p', null,
