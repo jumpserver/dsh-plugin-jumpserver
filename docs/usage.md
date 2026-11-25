@@ -39,4 +39,4 @@ jumpserver-mcp setup --url 'https://jumpserver.example.com/koko/mcp'
 
 **怎样更新或恢复插件？** 在 JumpServer 页点击 **更新至** 按钮，按提示重新加载页面或重启 DSH。热重载更新失败时，插件会尝试恢复旧版。如果恢复也失败，可从 DSH 日志或状态文件旁的 `jumpserver-updates/last-update-error.json` 找到 `file:` 恢复源，在插件管理中重新安装。
 
-[GitHub](https://github.com/jumpserver/dsh-plugin-jumpserver) · [反馈问题](https://github.com/jumpserver/dsh-plugin-jumpserver/issues)
+[GitHub](https://github.com/jumpserver/dsh-plugin-jumpserver) · [反馈问题](https://github.com/jumpserver/jumpserver/issues)
