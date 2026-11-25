@@ -19,7 +19,7 @@ const zh = {
   deleteQuestion: '撤销 JumpServer 授权并清除本地连接配置？', logoutQuestion: '撤销 JumpServer 的 OAuth 授权？',
   authHint: '在新页面登录并确认可访问组织的授权。授权完成后本页会自动更新。',
   authOpenFailed: '未能自动打开浏览器，请点击下方授权链接继续。',
-  version: '插件版本', checkUpdate: '检查更新', checkingUpdate: '检查中…', installUpdate: '更新', installingUpdate: '更新中…',
+  version: '插件版本', checkUpdate: '检查更新', checkingUpdate: '检查中…', installUpdate: '更新至', installingUpdate: '更新中…',
   development: '开发版',
   upToDate: '暂无更新', updateUnavailable: '请在 DSH 插件管理中更新。', managePlugin: '插件管理',
   updated: '已更新', reload: '重新加载', restartRequired: '重启 DSH 后生效。',
@@ -37,7 +37,7 @@ const en = {
   deleteQuestion: 'Revoke JumpServer authorization and clear this connection?', logoutQuestion: 'Revoke JumpServer OAuth authorization?',
   authHint: 'Sign in and authorize access to your available organizations in the new page. This page updates automatically.',
   authOpenFailed: 'The browser could not open automatically. Use the authorization link below to continue.',
-  version: 'Plugin version', checkUpdate: 'Check for updates', checkingUpdate: 'Checking…', installUpdate: 'Update', installingUpdate: 'Updating…',
+  version: 'Plugin version', checkUpdate: 'Check for updates', checkingUpdate: 'Checking…', installUpdate: 'Update to', installingUpdate: 'Updating…',
   development: 'Development',
   upToDate: 'No updates available', updateUnavailable: 'Update through DSH plugin management.', managePlugin: 'Manage plugin',
   updated: 'Updated', reload: 'Reload', restartRequired: 'Restart DSH to apply.',
@@ -191,7 +191,8 @@ function PluginHeader({ request, t, installBlocked, onInstallingChange, onManage
     } catch (e) { observer.error(e, action === 'install-update'); }
   };
   const label = t(operation === 'check-update' ? 'checkingUpdate' : operation === 'install-update' ? 'installingUpdate'
-    : pluginUpdate.needsRestart ? pluginUpdate.installedVersion ? 'updated' : 'restartRequired' : needsReload ? 'reload' : pluginUpdate.available ? 'installUpdate' : 'checkUpdate');
+    : pluginUpdate.needsRestart ? pluginUpdate.installedVersion ? 'updated' : 'restartRequired' : needsReload ? 'reload' : pluginUpdate.available ? 'installUpdate' : 'checkUpdate')
+    + (!operation && !pluginUpdate.needsRestart && !needsReload && pluginUpdate.available ? ` v${pluginUpdate.latestVersion}` : '');
   const hint = pluginUpdate.needsRestart ? t('restartRequired') : needsReload ? t('reload')
     : pluginUpdate.available ? pluginUpdate.canInstall ? `${t('installUpdate')} v${pluginUpdate.latestVersion}` : t('updateUnavailable') : t('checkUpdate');
   const notice = message?.text || (pluginUpdate.installedVersion
