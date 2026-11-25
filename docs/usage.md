@@ -37,6 +37,8 @@
 jumpserver-mcp setup --url 'https://jumpserver.example.com/koko/mcp'
 ```
 
+**旧仓库安装的 v0.1.4 如何升级？** 该版本在旧仓库检查更新。请在 DSH 插件管理中手动安装一次组织仓库的 `dsh-plugin-jumpserver-0.1.5.tgz`，然后按提示重新加载或重启 DSH。此后插件会在组织仓库检查新版本。[下载 v0.1.5](https://github.com/jumpserver/dsh-plugin-jumpserver/releases/tag/v0.1.5)
+
 **怎样更新或恢复插件？** 在 JumpServer 页点击 **更新至** 按钮，按提示重新加载页面或重启 DSH。热重载更新失败时，插件会尝试恢复旧版。如果恢复也失败，可从 DSH 日志或状态文件旁的 `jumpserver-updates/last-update-error.json` 找到 `file:` 恢复源，在插件管理中重新安装。
 
 [GitHub](https://github.com/jumpserver/dsh-plugin-jumpserver) · [反馈问题](https://github.com/jumpserver/jumpserver/issues)
