@@ -9,3 +9,9 @@
 3. 在对话里试试：“列出我能访问的测试主机，等我选一台，再查它的磁盘使用情况。”
 
 [使用说明](docs/usage.md) · [开发、构建与发布](docs/development.md)
+
+## 许可证
+
+Copyright (c) 2014-2026 FIT2CLOUD, All rights reserved.
+
+本项目基于 GNU General Public License version 3（GPLv3）许可，与 [JumpServer 主仓库](https://github.com/jumpserver/jumpserver)一致。完整许可文本请参阅 [LICENSE](LICENSE)。
